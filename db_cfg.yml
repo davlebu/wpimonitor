@@ -1,0 +1,6 @@
+database: REPORTING
+driver: "ODBC Driver 17 for SQL Server" # "ODBC Driver 17 for SQL Server" for SQL Server Managment Studio 19
+servers:
+  AT: m999digdb001a
+  PROD: m999digdb001p
+  DEV: m999digdb001d
