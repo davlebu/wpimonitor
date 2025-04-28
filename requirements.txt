@@ -1,0 +1,9 @@
+flask==2.3.3
+flask-cors==4.0.0
+# pyodbc==4.0.39  # Optional: Install manually if MS SQL access is needed
+pyyaml==6.0.1
+requests==2.31.0
+beautifulsoup4==4.12.2
+urllib3==2.0.7
+# sqlite3==3.45.0  # This is built into Python
+python-dotenv==1.0.0 
