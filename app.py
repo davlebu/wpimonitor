@@ -2,10 +2,81 @@ import os
 import sqlite3
 import json
 from flask import Flask, render_template, request, jsonify
-from process_data import process_bmi_data, get_config_from_db
-import datetime
+from process_data import process_bmi_data, DEFAULT_IMPORT_CUT_DATE, DEFAULT_AUTH_FILE_PATH
 
 app = Flask(__name__)
+
+# Default settings using values from process_data.py
+DEFAULT_SETTINGS = {
+    'import_cut_date': DEFAULT_IMPORT_CUT_DATE,
+    'auth_file_path': DEFAULT_AUTH_FILE_PATH
+}
+
+def initialize_settings():
+    """Initialize the settings table if it doesn't exist"""
+    conn = sqlite3.connect('bmi_data.db')
+    cursor = conn.cursor()
+    
+    # Create settings table if it doesn't exist
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS settings (
+        key TEXT PRIMARY KEY,
+        value TEXT
+    )
+    ''')
+    
+    # Check if settings already exist
+    cursor.execute("SELECT COUNT(*) FROM settings")
+    count = cursor.fetchone()[0]
+    
+    # If no settings exist, insert defaults
+    if count == 0:
+        for key, value in DEFAULT_SETTINGS.items():
+            cursor.execute("INSERT INTO settings (key, value) VALUES (?, ?)", (key, value))
+    else:
+        # Make sure both required settings exist
+        cursor.execute("SELECT key FROM settings")
+        existing_keys = [row[0] for row in cursor.fetchall()]
+        
+        for key, value in DEFAULT_SETTINGS.items():
+            if key not in existing_keys:
+                cursor.execute("INSERT INTO settings (key, value) VALUES (?, ?)", (key, value))
+    
+    conn.commit()
+    conn.close()
+
+def get_settings():
+    """Get all settings from the database"""
+    conn = sqlite3.connect('bmi_data.db')
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT key, value FROM settings")
+    rows = cursor.fetchall()
+    
+    settings = {}
+    for row in rows:
+        settings[row['key']] = row['value']
+    
+    # Ensure all settings exist with non-empty values
+    for key, default_value in DEFAULT_SETTINGS.items():
+        if key not in settings or not settings[key]:
+            settings[key] = default_value
+    
+    conn.close()
+    return settings
+
+def update_settings(new_settings):
+    """Update settings in the database"""
+    conn = sqlite3.connect('bmi_data.db')
+    cursor = conn.cursor()
+    
+    for key, value in new_settings.items():
+        cursor.execute("UPDATE settings SET value = ? WHERE key = ?", (value, key))
+    
+    conn.commit()
+    conn.close()
+    return True
 
 def get_termins():
     """Get all available termins from the database"""
@@ -201,8 +272,14 @@ def api_update_data():
     """API endpoint to trigger data update"""
     termin = request.get_json().get('termin')
     if termin:
+        # Validate termin format (YYYYMM)
+        if not termin.isdigit() or len(termin) != 6:
+            return jsonify({'success': False, 'error': 'Invalid termin format. Must be YYYYMM (e.g., 202405)'})
+            
         try:
-            process_bmi_data(termin)
+            # Get settings to pass to the process function
+            settings = get_settings()
+            process_bmi_data(termin, settings)
             return jsonify({'success': True})
         except Exception as e:
             return jsonify({'success': False, 'error': str(e)})
@@ -214,40 +291,26 @@ def api_statistics(termin):
     stats = get_termin_statistics(termin)
     return jsonify(stats)
 
-@app.route('/api/config', methods=['GET'])
-def api_get_config():
-    """API endpoint to get configuration values"""
-    config = get_config_from_db()
-    return jsonify(config)
+@app.route('/settings')
+def settings_page():
+    """Render the settings page"""
+    settings = get_settings()
+    return render_template('settings.html', settings=settings)
 
-@app.route('/api/config/<key>', methods=['PUT'])
-def api_update_config(key):
-    """API endpoint to update a configuration value"""
-    try:
-        data = request.get_json()
-        value = data.get('value')
-        
-        if not value:
-            return jsonify({'success': False, 'error': 'No value provided'})
-        
-        conn = sqlite3.connect('bmi_data.db')
-        cursor = conn.cursor()
-        
-        # Check if key exists
-        cursor.execute("SELECT key FROM config WHERE key = ?", (key,))
-        if cursor.fetchone() is None:
-            return jsonify({'success': False, 'error': f'Configuration key {key} not found'})
-        
-        # Update the value
-        now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        cursor.execute("UPDATE config SET value = ?, last_updated = ? WHERE key = ?", 
-                      (value, now, key))
-        conn.commit()
-        conn.close()
-        
-        return jsonify({'success': True})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+@app.route('/api/settings', methods=['GET'])
+def api_get_settings():
+    """API endpoint to get all settings"""
+    settings = get_settings()
+    return jsonify(settings)
+
+@app.route('/api/settings', methods=['PUT'])
+def api_update_settings():
+    """API endpoint to update settings"""
+    new_settings = request.get_json()
+    success = update_settings(new_settings)
+    return jsonify({'success': success})
 
 if __name__ == '__main__':
+    # Initialize settings when app starts
+    initialize_settings()
     app.run(debug=True) 

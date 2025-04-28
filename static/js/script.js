@@ -10,13 +10,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const missingFilesBtn = document.getElementById('missingFilesBtn');
     const resetFiltersBtn = document.getElementById('resetFiltersBtn');
     const updateDataBtn = document.getElementById('updateDataBtn');
+    const customTerminInput = document.getElementById('customTerminInput');
     const columnFilters = document.querySelectorAll('.column-filter');
     const sortableHeaders = document.querySelectorAll('th.sortable');
-    
-    // Configuration elements
-    const importCutDate = document.getElementById('importCutDate');
-    const authFilePath = document.getElementById('authFilePath');
-    const saveConfigBtn = document.getElementById('saveConfigBtn');
     
     // Bootstrap modals
     const entryModal = new bootstrap.Modal(document.getElementById('entryModal'));
@@ -39,15 +35,30 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize
     if (terminSelect.options.length > 0) {
         loadData();
-        loadConfig();
     }
     
     // Event listeners
     terminSelect.addEventListener('change', function() {
+        // Clear custom termin input when dropdown selection changes
+        customTerminInput.value = '';
         currentPage = 1;
         filters = {};
         resetFiltersUI();
         loadData();
+    });
+    
+    // Add event listener for custom termin input for validation feedback
+    customTerminInput.addEventListener('input', function() {
+        const value = this.value.trim();
+        if (value === '') {
+            this.classList.remove('is-invalid', 'is-valid');
+        } else if (/^\d{6}$/.test(value)) {
+            this.classList.remove('is-invalid');
+            this.classList.add('is-valid');
+        } else {
+            this.classList.remove('is-valid');
+            this.classList.add('is-invalid');
+        }
     });
     
     // Sorting
@@ -108,7 +119,17 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Update data
     updateDataBtn.addEventListener('click', function() {
-        if (confirm('Are you sure you want to update data for termin ' + terminSelect.value + '?')) {
+        // Get the custom termin if provided, otherwise use the selected termin
+        const customTermin = customTerminInput.value.trim();
+        const termin = customTermin || terminSelect.value;
+        
+        // Validate the termin format if custom termin is provided
+        if (customTermin && !/^\d{6}$/.test(customTermin)) {
+            alert('Please enter a valid termin in the format YYYYMM (e.g., 202405).');
+            return;
+        }
+        
+        if (confirm('Are you sure you want to update data for termin ' + termin + '?')) {
             loadingModal.show();
             fetch('/api/update', {
                 method: 'POST',
@@ -116,7 +137,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    termin: terminSelect.value
+                    termin: termin
                 })
             })
             .then(response => response.json())
@@ -124,7 +145,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 loadingModal.hide();
                 if (data.success) {
                     alert('Data updated successfully!');
-                    loadData();
+                    // If this was a new termin, refresh the termin list
+                    if (customTermin) {
+                        fetchTermins();
+                    } else {
+                        loadData();
+                    }
                 } else {
                     alert('Error updating data: ' + (data.error || 'Unknown error'));
                 }
@@ -169,63 +195,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // Save configuration
-    saveConfigBtn.addEventListener('click', function() {
-        const cutDateValue = importCutDate.value;
-        const authFileValue = authFilePath.value;
-        
-        // Save Import Cut Date
-        if (cutDateValue) {
-            updateConfig('IMPORT_CUT_DATE', cutDateValue);
-        }
-        
-        // Save Auth File Path
-        if (authFileValue) {
-            updateConfig('AUTH_FILE_PATH', authFileValue);
-        }
-    });
-    
-    // Function to load configuration
-    function loadConfig() {
-        fetch('/api/config')
-            .then(response => response.json())
-            .then(config => {
-                if (config['IMPORT_CUT_DATE']) {
-                    importCutDate.value = config['IMPORT_CUT_DATE'];
-                }
-                if (config['AUTH_FILE_PATH']) {
-                    authFilePath.value = config['AUTH_FILE_PATH'];
-                }
-            })
-            .catch(error => {
-                console.error('Error loading configuration:', error);
-            });
-    }
-    
-    // Function to update configuration
-    function updateConfig(key, value) {
-        fetch(`/api/config/${key}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                value: value
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert(`Configuration ${key} updated successfully!`);
-            } else {
-                alert(`Error updating configuration: ${data.error || 'Unknown error'}`);
-            }
-        })
-        .catch(error => {
-            alert(`Error: ${error}`);
-        });
-    }
-    
     // Load data function
     function loadData() {
         const termin = terminSelect.value;
@@ -250,20 +219,27 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 renderTable(data.data);
                 renderPagination(data.total);
-                // We don't update statistics from filtered data anymore
+                totalRecords.textContent = data.total;
+                
+                // Also load statistics
+                fetchStatistics(termin);
             })
             .catch(error => {
-                console.error('Error fetching data:', error);
+                console.error('Error loading data:', error);
+                tableBody.innerHTML = `<tr><td colspan="6" class="text-center">Error loading data: ${error}</td></tr>`;
             });
-            
-        // Fetch statistics separately - not affected by filters
+    }
+    
+    // Function to fetch statistics
+    function fetchStatistics(termin) {
         fetch(`/api/statistics/${termin}`)
             .then(response => response.json())
-            .then(stats => {
-                updateStatistics(stats);
+            .then(data => {
+                missingCount.textContent = data.missing_count;
+                missingPercentage.textContent = data.missing_percentage + '%';
             })
             .catch(error => {
-                console.error('Error fetching statistics:', error);
+                console.error('Error loading statistics:', error);
             });
     }
     
@@ -302,11 +278,6 @@ document.addEventListener('DOMContentLoaded', function() {
     function renderPagination(total) {
         const totalPages = Math.ceil(total / pageSize);
         pagination.querySelector('ul').innerHTML = '';
-        
-        // Update total records
-        totalRecords.textContent = total;
-        
-        if (totalPages <= 1) return;
         
         // Previous button
         const prevLi = document.createElement('li');
@@ -353,12 +324,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         pagination.querySelector('ul').appendChild(nextLi);
-    }
-    
-    // Update statistics
-    function updateStatistics(data) {
-        missingCount.textContent = data.missing_count;
-        missingPercentage.textContent = data.missing_percentage + '%';
     }
     
     // Open entry details
@@ -425,5 +390,28 @@ document.addEventListener('DOMContentLoaded', function() {
             .replace(/>/g, "&gt;")
             .replace(/"/g, "&quot;")
             .replace(/'/g, "&#039;");
+    }
+    
+    // Add function to fetch termins
+    function fetchTermins() {
+        fetch('/api/termins')
+            .then(response => response.json())
+            .then(data => {
+                // Update the select options
+                terminSelect.innerHTML = '';
+                data.forEach(termin => {
+                    const option = document.createElement('option');
+                    option.value = termin;
+                    option.textContent = termin;
+                    terminSelect.appendChild(option);
+                });
+                // Clear the custom termin input
+                customTerminInput.value = '';
+                // Load data for the newly selected termin
+                loadData();
+            })
+            .catch(error => {
+                console.error('Error fetching termins:', error);
+            });
     }
 }); 

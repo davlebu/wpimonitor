@@ -1,5 +1,5 @@
 flask==2.3.3
-flask-cors==4.0.0
+# flask-cors==4.0.0  # Removed CORS dependency
 # pyodbc==4.0.39  # Optional: Install manually if MS SQL access is needed
 pyyaml==6.0.1
 requests==2.31.0
