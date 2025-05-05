@@ -1,0 +1,12 @@
+SELECT [anwendungs_id]
+          ,[blz]
+          ,[befoerderungs_datum]
+          ,[externe_referenz]
+          ,[datei_id]
+          ,[empfangszeit]
+          ,[dateiname]
+          ,[meldetermin]
+          ,[melder_id]
+          ,[melder_id_art]
+      FROM [REPORTING].[dbo].[wpi-importe]
+    WHERE befoerderungs_datum > {IMPORT_CUT_DATE}

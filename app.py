@@ -2,7 +2,7 @@ import os
 import sqlite3
 import json
 from flask import Flask, render_template, request, jsonify
-from process_data import process_bmi_data, DEFAULT_IMPORT_CUT_DATE, DEFAULT_AUTH_FILE_PATH
+from process_data import process_data, DEFAULT_IMPORT_CUT_DATE, DEFAULT_AUTH_FILE_PATH
 
 app = Flask(__name__)
 
@@ -279,7 +279,7 @@ def api_update_data():
         try:
             # Get settings to pass to the process function
             settings = get_settings()
-            process_bmi_data(termin, settings)
+            process_data(termin, settings)
             return jsonify({'success': True})
         except Exception as e:
             return jsonify({'success': False, 'error': str(e)})
