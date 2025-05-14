@@ -1,28 +1,29 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="theme-{{ settings.statistics }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WPI Monitor Dashboard</title>
+    <title>DigiStik Monitor</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container-fluid">
-            <a class="navbar-brand" href="#">WPI Monitor</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
+            <a class="navbar-brand icon-text" href="#"><i class="bi bi-stack"></i>DigiStik Monitor</a>
+            <div class="d-flex align-items-center">
+                <span class="theme-badge me-3">{{ settings.statistics|upper }}</span>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+            </div>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav">
                     <li class="nav-item">
-                        <a class="nav-link active" href="/">Dashboard</a>
+                        <a class="nav-link active icon-text" href="/"><i class="bi bi-grid-1x2-fill"></i>Dashboard</a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/settings">Settings</a>
-                    </li>
+
                 </ul>
             </div>
         </div>
@@ -30,56 +31,126 @@
 
     <div class="container-fluid mt-4">
         <div class="row">
+            <!-- Left Column - Controls -->
             <div class="col-md-3">
-                <div class="card">
-                    <div class="card-header">
-                        <strong>Termin Selection</strong>
+                <!-- Statistics Selection -->
+                <div class="card mb-4">
+                    <div class="card-header card-header-theme">
+                        <strong class="icon-text"><i class="bi bi-toggles"></i>Statistics Selection</strong>
                     </div>
                     <div class="card-body">
-                        <select id="terminSelect" class="form-select">
+                        <div class="statistics-toggle">
+                            <div class="btn-group w-100" role="group" aria-label="Statistics Type">
+                                <input type="radio" class="btn-check" name="statisticsType" id="wpiRadio" value="wpi" {% if settings.statistics == 'wpi' %}checked{% endif %}>
+                                <label class="btn btn-toggle btn-wpi" for="wpiRadio">
+                                    <span class="toggle-indicator"><i class="bi bi-check-circle-fill"></i></span>
+                                    WPI
+                                </label>
+
+                                <input type="radio" class="btn-check" name="statisticsType" id="emisoRadio" value="emiso" {% if settings.statistics == 'emiso' %}checked{% endif %}>
+                                <label class="btn btn-toggle btn-emiso" for="emisoRadio">
+                                    <span class="toggle-indicator"><i class="bi bi-check-circle-fill"></i></span>
+                                    EMISO
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Termin Selection -->
+                <div class="card">
+                    <div class="card-header card-header-theme">
+                        <strong class="icon-text"><i class="bi bi-calendar-event"></i>Termin Selection</strong>
+                    </div>
+                    <div class="card-body">
+                        <select id="terminSelect" class="form-select border-theme">
                             {% for termin in termins %}
                             <option value="{{ termin }}">{{ termin }}</option>
                             {% endfor %}
                         </select>
 
                         <div class="mt-3">
-                            <label for="customTerminInput" class="form-label">Custom Termin (YYYYMM):</label>
+                            <label for="customTerminInput" class="form-label icon-text" id="customTerminInputLabel">
+                                <i class="bi bi-pencil-square"></i>Custom Termin (YYYYMM):
+                            </label>
                             <input type="text" id="customTerminInput" class="form-control" placeholder="e.g. 202405" pattern="[0-9]{6}">
                             <div class="form-text">Enter a termin in YYYYMM format to update or create a new period</div>
                         </div>
 
                         <div class="d-grid gap-2 mt-3">
-                            <button id="updateDataBtn" class="btn btn-primary">
+                            <button id="updateDataBtn" class="btn btn-primary icon-text">
                                 <i class="bi bi-arrow-clockwise"></i> Update Data
                             </button>
                         </div>
-                        
+
                         <hr>
-                        
+
+                        <!-- Advanced Settings Panel (Collapsible) -->
+                        <div class="mt-3">
+                            <a class="d-flex justify-content-between align-items-center text-decoration-none"
+                               data-bs-toggle="collapse"
+                               href="#advancedSettingsCollapse"
+                               role="button"
+                               aria-expanded="false"
+                               aria-controls="advancedSettingsCollapse">
+                                <h5 class="mb-0 icon-text text-body"><i class="bi bi-gear-wide-connected"></i>Advanced Settings</h5>
+                                <i class="bi bi-chevron-down"></i>
+                            </a>
+                            <div class="collapse mt-3" id="advancedSettingsCollapse">
+                                <div class="form-group mb-3">
+                                    <label for="importCutDate" class="form-label">Import Cut Date:</label>
+                                    <input type="text" id="importCutDate" class="form-control"
+                                           value="{{ settings.import_cut_date }}" placeholder="YYYYMMDD">
+                                    <div class="form-text">Files before this date will not be processed.</div>
+                                </div>
+                                <div class="form-group mb-3">
+                                    <label for="authFilePath" class="form-label">Auth File Path:</label>
+                                    <input type="text" id="authFilePath" class="form-control"
+                                           value="{{ settings.auth_file_path }}">
+                                    <div class="form-text">Path to authentication file.</div>
+                                </div>
+                                <div class="d-grid">
+                                    <button id="saveSettingsBtn" class="btn btn-outline-primary icon-text">
+                                        <i class="bi bi-save"></i> Save Settings
+                                    </button>
+                                </div>
+                                <div id="settingsSaveAlert" class="alert mt-2" style="display: none;"></div>
+                            </div>
+                        </div>
+
+                        <hr>
+
                         <div id="statistics" class="mt-3">
-                            <h5>Statistics</h5>
+                            <h5 class="icon-text"><i class="bi bi-bar-chart-line"></i>Statistics</h5>
                             <div id="statsContent">
-                                <div class="alert alert-info">
-                                    <span id="missingCount">0</span> files missing
-                                    (<span id="missingPercentage">0%</span>)
+                                <div class="alert alert-info icon-text">
+                                    <i class="bi bi-info-circle-fill me-2"></i>
+                                    <div> <!-- Wrapper for text content -->
+                                        <span id="missingCount">0</span> files missing
+                                        (<span id="missingPercentage">0%</span>)
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            
+
+            <!-- Right Column - Files Table -->
             <div class="col-md-9">
                 <div class="card">
-                    <div class="card-header">
+                    <div class="card-header card-header-theme">
                         <div class="d-flex justify-content-between align-items-center">
-                            <strong>Files</strong>
+                            <strong class="icon-text"><i class="bi bi-table"></i>Files</strong>
                             <div>
-                                <button id="missingFilesBtn" class="btn btn-sm btn-outline-danger">
-                                    <i class="bi bi-filter"></i> Show Missing Files
+                                <button id="missingFilesBtn" class="btn btn-sm btn-missing inactive icon-text">
+                                    <i class="bi bi-funnel"></i> Missing
                                 </button>
-                                <button id="resetFiltersBtn" class="btn btn-sm btn-outline-secondary">
-                                    <i class="bi bi-x-circle"></i> Reset Filters
+                                <button id="rejectedFilesBtn" class="btn btn-sm btn-rejected inactive icon-text">
+                                    <i class="bi bi-funnel-fill"></i> Rejected
+                                </button>
+                                <button id="resetFiltersBtn" class="btn btn-sm btn-filter inactive icon-text">
+                                    <i class="bi bi-x-circle"></i> Reset
                                 </button>
                             </div>
                         </div>
@@ -89,19 +160,32 @@
                             <table id="dataTable" class="table table-striped table-hover">
                                 <thead>
                                     <tr>
-                                        <th data-field="datei" class="sortable">Datei <i class="bi bi-sort-alpha-down sort-icon"></i></th>
-                                        <th data-field="erstellt" class="sortable">Timestamp <i class="bi bi-sort-alpha-down sort-icon"></i></th>
-                                        <th data-field="melder_id" class="sortable">Melder ID <i class="bi bi-sort-alpha-down sort-icon"></i></th>
-                                        <th data-field="typ" class="sortable">Typ <i class="bi bi-sort-alpha-down sort-icon"></i></th>
-                                        <th data-field="import_found" class="sortable">Import Found <i class="bi bi-sort-alpha-down sort-icon"></i></th>
-                                        <th data-field="ok" class="sortable">OK <i class="bi bi-sort-alpha-down sort-icon"></i></th>
+                                        <!-- Remove icon-text class from th, apply to inner content if needed -->
+                                        <th data-field="datei" class="sortable">
+                                            Datei <i class="bi bi-sort-alpha-down sort-icon"></i>
+                                        </th>
+                                        <th data-field="erstellt" class="sortable">
+                                            Timestamp <i class="bi bi-sort-alpha-down sort-icon"></i>
+                                        </th>
+                                        <th data-field="melder_id" class="sortable">
+                                            Melder ID <i class="bi bi-sort-alpha-down sort-icon"></i>
+                                        </th>
+                                        <th data-field="typ" class="sortable">
+                                            Typ <i class="bi bi-sort-alpha-down sort-icon"></i>
+                                        </th>
+                                        <th data-field="import_found" class="sortable">
+                                            Import <i class="bi bi-sort-alpha-down sort-icon"></i>
+                                        </th>
+                                        <th data-field="ok" class="sortable">
+                                            OK <i class="bi bi-sort-alpha-down sort-icon"></i>
+                                        </th>
                                     </tr>
                                     <tr id="filterRow">
-                                        <th><input type="text" class="form-control form-control-sm column-filter" data-field="datei"></th>
-                                        <th><input type="text" class="form-control form-control-sm column-filter" data-field="erstellt"></th>
-                                        <th><input type="text" class="form-control form-control-sm column-filter" data-field="melder_id"></th>
-                                        <th><input type="text" class="form-control form-control-sm column-filter" data-field="typ"></th>
-                                        <th></th>
+                                        <th><input type="text" class="form-control form-control-sm column-filter" data-field="datei" placeholder="Filter Datei..."></th>
+                                        <th><input type="text" class="form-control form-control-sm column-filter" data-field="erstellt" placeholder="Filter Timestamp..."></th>
+                                        <th><input type="text" class="form-control form-control-sm column-filter" data-field="melder_id" placeholder="Filter Melder ID..."></th>
+                                        <th><input type="text" class="form-control form-control-sm column-filter" data-field="typ" placeholder="Filter Typ..."></th>
+                                        <th></th> <!-- No filter for Import Found / OK columns -->
                                         <th></th>
                                     </tr>
                                 </thead>
@@ -110,10 +194,10 @@
                                 </tbody>
                             </table>
                         </div>
-                        
+
                         <div class="d-flex justify-content-between align-items-center mt-3">
                             <div>
-                                <span id="totalRecords">0</span> records found
+                                <i class="bi bi-info-square"></i> <span id="totalRecords">0</span> records found
                             </div>
                             <nav id="pagination">
                                 <ul class="pagination pagination-sm">
@@ -129,11 +213,11 @@
 
     <!-- Entry Details Modal -->
     <div class="modal fade" id="entryModal" tabindex="-1" aria-labelledby="entryModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable"> <!-- Added modal-dialog-scrollable -->
             <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="entryModalLabel">Entry Details</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <div class="modal-header card-header-theme">
+                    <h5 class="modal-title icon-text" id="entryModalLabel"><i class="bi bi-file-earmark-text"></i>Entry Details</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div id="entryDetails">
@@ -141,19 +225,19 @@
                     </div>
                     <hr>
                     <div class="mb-3">
-                        <label for="entryComment" class="form-label fw-bold">Comment</label>
+                        <label for="entryComment" class="form-label fw-bold icon-text"><i class="bi bi-chat-left-text"></i>Comment</label>
                         <textarea id="entryComment" class="form-control" rows="3"></textarea>
                     </div>
                     <div class="form-check mb-3">
                         <input class="form-check-input" type="checkbox" id="entryOk">
-                        <label class="form-check-label fw-bold" for="entryOk">
-                            OK
+                        <label class="form-check-label fw-bold icon-text" for="entryOk">
+                           <i class="bi bi-check2-square"></i> OK
                         </label>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-primary" id="saveEntryBtn">Save changes</button>
+                    <button type="button" class="btn btn-secondary icon-text" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i>Close</button>
+                    <button type="button" class="btn btn-primary icon-text" id="saveEntryBtn"><i class="bi bi-save"></i>Save changes</button>
                 </div>
             </div>
         </div>
@@ -163,11 +247,12 @@
     <div class="modal fade" id="loadingModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
-                <div class="modal-body text-center">
-                    <div class="spinner-border text-primary" role="status">
+                <div class="modal-body text-center py-4">
+                    <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
                         <span class="visually-hidden">Loading...</span>
                     </div>
-                    <p class="mt-3">Processing data, please wait...</p>
+                    <h4>Processing data...</h4>
+                    <p class="text-muted">Please wait, this may take a moment.</p>
                 </div>
             </div>
         </div>
@@ -176,4 +261,4 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
-</html> 
+</html>

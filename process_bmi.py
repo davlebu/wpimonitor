@@ -6,7 +6,7 @@ import utils
 BMI_URL = 'https://bmi-login.inet.bundesbank.de/bmi/MeldungList.do?value(action)=aktion.gruppe.3&value(nformat)=0'
 AUTH_FILE_PATH = r"C:\Users\s1504nn\auth_wpi.yml"
 
-def fetch_bmi_data(termin):
+def fetch_bmi_data(termin,sachgebiet):
     auth_config = utils.load_yaml_config(AUTH_FILE_PATH)
     if not auth_config:
         print("Failed to load authentication configuration.")
@@ -38,7 +38,7 @@ def fetch_bmi_data(termin):
         data = {
             'value(nisfinder)': 'true',
             'value(nismeldungkeys)': '',
-            'auswahl(isachgebiet)': '14',
+            'auswahl(isachgebiet)': sachgebiet,
             'value(aelz)': '',
             'value(alieferung)': '',
             'value(ntest)': 'cb.all',
@@ -110,7 +110,7 @@ def parse_bmi_html(html_content):
                             bmi_dict[id2] = {
                                 'id1': id1,
                                 'id2': id2,
-                                'melder_id': melder_id,
+                                'melder_id_bmi': melder_id,
                                 'institutstyp': institutstyp,
                                 'termin': termin,
                                 'datei': datei.replace('.zip_', '.zip - '),
@@ -130,12 +130,12 @@ def parse_bmi_html(html_content):
 
     return bmi_dict
 
-def get_bmi_data_dict(termin):
+def get_bmi_data_dict(termin, statistics):
 
 
-
+    sachgebiet= '14' if statistics=='wpi' else '17'
     print(f"Fetching data from BMI website for termin {termin}...")
-    html_content = fetch_bmi_data(termin)
+    html_content = fetch_bmi_data(termin, sachgebiet=sachgebiet)
     if not html_content:
         print("Failed to fetch data from BMI website.")
         # For testing purposes, try loading from a file

@@ -1,19 +1,22 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="theme-{{ settings.statistics }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WPI Monitor - Settings</title>
+    <title>DigiStik Monitor - Settings</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container">
-            <a class="navbar-brand" href="/">WPI Monitor</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
+            <a class="navbar-brand" href="/">DigiStik Monitor</a>
+            <div class="d-flex align-items-center">
+                <span class="theme-badge me-3">{{ settings.statistics|upper }}</span>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+            </div>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav">
                     <li class="nav-item">
@@ -29,12 +32,46 @@
 
     <div class="container mt-4">
         <h1>Settings</h1>
+
+        <!-- Statistics Selection Section -->
         <div class="card mt-4">
-            <div class="card-header">
-                Configuration
+            <div class="card-header card-header-theme">
+                <strong>Statistics Type</strong>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-center mb-4">
+                    <div class="statistics-toggle">
+                        <div class="btn-group" role="group" aria-label="Statistics Type">
+                            <input type="radio" class="btn-check" name="statisticsType" id="wpiRadio" value="wpi" {% if settings.statistics == 'wpi' %}checked{% endif %}>
+                            <label class="btn btn-toggle btn-wpi" for="wpiRadio">
+                                <span class="toggle-indicator"><i class="bi bi-check-circle-fill"></i></span>
+                                WPI
+                            </label>
+
+                            <input type="radio" class="btn-check" name="statisticsType" id="emisoRadio" value="emiso" {% if settings.statistics == 'emiso' %}checked{% endif %}>
+                            <label class="btn btn-toggle btn-emiso" for="emisoRadio">
+                                <span class="toggle-indicator"><i class="bi bi-check-circle-fill"></i></span>
+                                EMISO
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> The selected statistics type determines which data source is used for importing and displaying data.
+                </div>
+            </div>
+        </div>
+
+        <!-- Other Settings -->
+        <div class="card mt-4">
+            <div class="card-header card-header-theme">
+                <strong>Configuration Settings</strong>
             </div>
             <div class="card-body">
                 <form id="settingsForm">
+                    <input type="hidden" id="statistics" name="statistics" value="{{ settings.statistics }}">
+
                     <div class="mb-3">
                         <label for="import_cut_date" class="form-label">Import Cut Date</label>
                         <input type="text" class="form-control" id="import_cut_date" value="{{ settings.import_cut_date }}" placeholder="YYYYMMDD">
@@ -57,11 +94,40 @@
         document.addEventListener('DOMContentLoaded', function() {
             const settingsForm = document.getElementById('settingsForm');
             const saveAlert = document.getElementById('saveAlert');
+            const statisticsInput = document.getElementById('statistics');
+            const wpiRadio = document.getElementById('wpiRadio');
+            const emisoRadio = document.getElementById('emisoRadio');
+
+            // Update theme and hidden input when statistics type changes
+            function updateStatisticsSelection(value) {
+                document.documentElement.className = 'theme-' + value;
+                statisticsInput.value = value;
+
+                // Update badges
+                const badges = document.querySelectorAll('.theme-badge');
+                badges.forEach(badge => {
+                    badge.textContent = value.toUpperCase();
+                });
+            }
+
+            // Add event listeners to radio buttons
+            wpiRadio.addEventListener('change', function() {
+                if (this.checked) {
+                    updateStatisticsSelection('wpi');
+                }
+            });
+
+            emisoRadio.addEventListener('change', function() {
+                if (this.checked) {
+                    updateStatisticsSelection('emiso');
+                }
+            });
 
             settingsForm.addEventListener('submit', function(event) {
                 event.preventDefault();
-                
+
                 const settings = {
+                    statistics: statisticsInput.value,
                     import_cut_date: document.getElementById('import_cut_date').value,
                     auth_file_path: document.getElementById('auth_file_path').value
                 };
@@ -83,7 +149,7 @@
                         saveAlert.textContent = 'Error saving settings.';
                     }
                     saveAlert.style.display = 'block';
-                    
+
                     setTimeout(() => {
                         saveAlert.style.display = 'none';
                     }, 3000);
@@ -97,4 +163,4 @@
         });
     </script>
 </body>
-</html> 
+</html>

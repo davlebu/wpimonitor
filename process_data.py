@@ -18,21 +18,8 @@ IMPORT_CUT_DATE = '20250101'  # Filter for befoerderungs_datum
 DB_CFG_FILE = "db_cfg.yml"
 
 
-# Function to load YAML configuration
 
-
-
-# Function to fetch data from BMI website
-
-# Function to connect to MS-SQL Server
-
-# Function to create or update SQLite database
-
-
-
-
-
-def process_data(termin):
+def process_data(termin, statistics):
     print(f"Starting BMI data processor for termin {termin}...")
 
 
@@ -44,7 +31,7 @@ def process_data(termin):
         return
 
     # Get dta from BMI
-    bmi_dict=process_bmi.get_bmi_data_dict(termin)
+    bmi_dict=process_bmi.get_bmi_data_dict(termin, statistics)
 
     # Connect to MS-SQL Server
     print("Connecting to MS-SQL Server...")
@@ -55,17 +42,17 @@ def process_data(termin):
 
 
 
-    wpi_importe_query=db_utils.wpi_importe_statement(IMPORT_CUT_DATE)
+    importe_query=db_utils.emiso_importe_statement(IMPORT_CUT_DATE) if statistics=='emiso' else db_utils.wpi_importe_statement(IMPORT_CUT_DATE)
 
-    wpi_importe_data = db_utils.load_sql_data(sql_conn, wpi_importe_query)
-    wpi_importe_dict = {record['datei_id']: record for record in wpi_importe_data}
-    print(f"Loaded {len(wpi_importe_dict)} records from wpi-importe.")
+    importe_data = db_utils.load_sql_data(sql_conn, importe_query)
+    importe_dict = {record['datei_id']: record for record in importe_data}
+    print(f"Loaded {len(importe_dict)} records from wpi-importe.")
 
-    wpi_importe_abgewiesen_query = db_utils.wpi_importe_abgewiesen_statement(IMPORT_CUT_DATE)
+    importe_abgewiesen_query = db_utils.emiso_importe_abgewiesen_statement(IMPORT_CUT_DATE) if statistics=='emiso' else db_utils.wpi_importe_abgewiesen_statement(IMPORT_CUT_DATE)
 
-    wpi_importe_abgewiesen_data = db_utils.load_sql_data(sql_conn, wpi_importe_abgewiesen_query)
-    wpi_importe_abgewiesen_dict = {record['import_datei_id']: record for record in wpi_importe_abgewiesen_data}
-    print(f"Loaded {len(wpi_importe_abgewiesen_dict)} records from wpi-importe-abgewiesen-flat.")
+    importe_abgewiesen_data = db_utils.load_sql_data(sql_conn, importe_abgewiesen_query)
+    importe_abgewiesen_dict = {record['import_datei_id']: record for record in importe_abgewiesen_data}
+    print(f"Loaded {len(importe_abgewiesen_dict)} records from wpi-importe-abgewiesen-flat.")
 
     sql_conn.close()
 
@@ -77,12 +64,12 @@ def process_data(termin):
         dateiname_bmi = value['datei']
 
         # Check if datei is in wpi_importe_dict
-        if dateiname_bmi in wpi_importe_dict:
+        if dateiname_bmi in importe_dict:
             value['import_found'] = True
             match_count_import += 1
 
             # Add all attributes from wpi_importe_dict
-            import_record = wpi_importe_dict[dateiname_bmi]
+            import_record = importe_dict[dateiname_bmi]
             for attr_key, attr_value in import_record.items():
                 # Convert any non-string values to strings
                 if attr_value is not None and not isinstance(attr_value, str):
@@ -90,33 +77,34 @@ def process_data(termin):
                 value[attr_key] = attr_value
 
         # Check if datei is in wpi_importe_abgewiesen_flat_dict
-        if dateiname_bmi in wpi_importe_abgewiesen_dict:
+        if dateiname_bmi in importe_abgewiesen_dict:
             value['rejected_import_found'] = True
             match_count_rejected += 1
 
             # Add all attributes from wpi_importe_abgewiesen_flat_dict
-            rejected_record = wpi_importe_abgewiesen_dict[dateiname_bmi]
+            rejected_record = importe_abgewiesen_dict[dateiname_bmi]
             for attr_key, attr_value in rejected_record.items():
                 # Convert any non-string values to strings
                 if attr_value is not None and not isinstance(attr_value, str):
                     attr_value = str(attr_value)
                 value[attr_key] = attr_value
 
-    print(f"Found {match_count_import} matches in wpi-importe.")
-    print(f"Found {match_count_rejected} matches in wpi-importe-abgewiesen-flat.")
+    print(f"Found {match_count_import} matches in importe.")
+    print(f"Found {match_count_rejected} matches in importe-abgewiesen-flat.")
 
     # Create or update SQLite database
     print("Creating/updating SQLite database...")
+    db_utils.insert_into_bmi_table(data_dict=bmi_dict, termin=termin, db_path='bmi_data.db', statistics=statistics)
+    print(f"Process completed successfully lala for termin {termin}.")
 
-    db_utils.insert_into_bmi_table(data_dict=bmi_dict, termin=termin, db_path='bmi_data.db')
-    print(f"Process completed successfully for termin {termin}.")
-
-
-# Main function
 def main():
     # Example usage
-    current_month = "202501"
-    process_data(current_month)
+    current_month = "202504"
+    process_data(current_month, statistics='emiso')
+
+
+
+
 
 
 if __name__ == "__main__":
